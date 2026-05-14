@@ -1,0 +1,709 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>DriveStreamBench: User-Conditioned Watch-and-Notify in Streaming Driving Video</title>
+<meta name="description" content="DriveStreamBench: a streaming benchmark for user-conditioned watch-and-notify on driving video." />
+<style>
+* { box-sizing: border-box; margin: 0; padding: 0; }
+html, body {
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial,
+               "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", sans-serif;
+  background: linear-gradient(135deg, #0a0a0a 0%, #1a1a2e 50%, #16213e 100%);
+  background-attachment: fixed;
+  color: #e8e8e8;
+  line-height: 1.6;
+  -webkit-font-smoothing: antialiased;
+  overflow-x: hidden;
+}
+a { color: #cfd6ff; text-decoration: none; transition: color .2s; }
+a:hover { color: #ffffff; text-decoration: underline; }
+code { font-family: ui-monospace, "SF Mono", Menlo, monospace; background: rgba(255,255,255,0.08);
+  padding: 2px 6px; border-radius: 4px; font-size: 0.88em; color: #e0e6ff; }
+
+/* ============ LANG SWITCHER (fixed top-right) ============ */
+.lang-switcher {
+  position: fixed; top: 18px; right: 18px; z-index: 200;
+  display: flex; gap: 3px;
+  background: rgba(0,0,0,0.45); backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px);
+  border: 1px solid rgba(255,255,255,0.15);
+  border-radius: 999px; padding: 3px;
+  box-shadow: 0 6px 22px rgba(0,0,0,0.35);
+}
+.lang-btn {
+  background: transparent; border: 0; color: #adb5bd;
+  padding: 5px 14px; border-radius: 999px;
+  font: inherit; font-size: 0.85rem; cursor: pointer; transition: background .2s, color .2s;
+}
+.lang-btn:hover { color: #fff; }
+.lang-btn.active { background: rgba(255,255,255,0.18); color: #fff; }
+
+/* ============ HERO ============ */
+.hero-section {
+  padding: 5rem 2rem 3rem;
+  text-align: center;
+  background: radial-gradient(ellipse at center top, rgba(255, 255, 255, 0.05) 0%, transparent 60%);
+}
+.hero-inner { max-width: 980px; margin: 0 auto; }
+.hero-title {
+  font-size: clamp(2.2rem, 6vw, 4rem);
+  font-weight: 700;
+  letter-spacing: -0.025em;
+  line-height: 1.1;
+  background: linear-gradient(135deg, #f8f9fa 0%, #c0c5d4 100%);
+  -webkit-background-clip: text; background-clip: text;
+  -webkit-text-fill-color: transparent;
+  margin-bottom: 0.6rem;
+}
+.hero-subtitle {
+  font-size: clamp(1.0rem, 1.9vw, 1.25rem);
+  color: #adb5bd; font-weight: 400; letter-spacing: 0.01em;
+  margin-bottom: 1rem; max-width: 820px; margin-left: auto; margin-right: auto;
+  line-height: 1.5;
+}
+.authors { font-size: 0.98rem; color: #d4d4d8; margin: 1.2rem 0 0.4rem 0; }
+.affiliation { font-size: 0.88rem; color: #ced4da; margin-bottom: 1.4rem; }
+.nav-links { display: flex; flex-wrap: wrap; justify-content: center; gap: 0.7rem; margin-top: 1.4rem; }
+.nav-button {
+  display: inline-flex; align-items: center; gap: 0.45rem;
+  padding: 0.5rem 1.3rem;
+  background: rgba(255, 255, 255, 0.08);
+  backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  border-radius: 999px; color: #e8e8e8 !important;
+  font-weight: 500; font-size: 0.92rem;
+  transition: all 0.3s ease;
+  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
+}
+.nav-button:hover {
+  background: rgba(255, 255, 255, 0.14);
+  border-color: rgba(255, 255, 255, 0.28);
+  transform: translateY(-2px);
+  box-shadow: 0 8px 25px rgba(0, 0, 0, 0.3);
+  text-decoration: none;
+}
+.nav-button .icon { font-size: 1.0em; }
+
+.hero-abstract { margin: 3rem auto 0; max-width: 820px; }
+.hero-abstract .section-eyebrow { margin-bottom: 6px; }
+.hero-abstract .section-title { font-size: clamp(1.4rem, 2.6vw, 1.7rem); margin-bottom: 12px; }
+.hero-abstract .section-lede { margin: 0; font-size: 0.96rem; }
+
+/* ============ HERO DEMO (animated tab) ============ */
+.demo-block {
+  margin: 2.6rem auto 0; max-width: 760px;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255,255,255,0.10);
+  padding: 14px; border-radius: 14px;
+  box-shadow: 0 25px 50px rgba(0,0,0,0.4);
+  text-align: left;
+}
+.demo-tabs {
+  display: grid; grid-template-columns: repeat(3, 1fr);
+  gap: 8px; margin-bottom: 12px;
+}
+@media (max-width: 380px) { .demo-tabs { grid-template-columns: repeat(2, 1fr); } }
+.demo-tabs button {
+  background: rgba(255,255,255,0.06); color: #d4d4d8;
+  border: 1px solid rgba(255,255,255,0.10); border-radius: 999px;
+  padding: 6px 12px; font-size: 0.82rem; cursor: pointer;
+  font-family: inherit; transition: all .25s;
+  white-space: nowrap; text-align: center;
+}
+.demo-tabs button:hover { background: rgba(255,255,255,0.12); }
+.demo-tabs button.active {
+  background: rgba(154, 166, 255, 0.22);
+  border-color: rgba(154, 166, 255, 0.5); color: #fff;
+}
+.demo-kicker {
+  font-size: 0.68rem; letter-spacing: 0.14em; text-transform: uppercase;
+  color: #9aa6ff; font-weight: 700; margin-bottom: 5px;
+}
+.demo-question-wrap { margin-bottom: 10px; }
+.demo-question-wrap .demo-question { margin-bottom: 0; }
+.demo-cat-info {
+  background: rgba(255,255,255,0.04);
+  border: 1px solid rgba(255,255,255,0.10);
+  border-radius: 8px;
+  padding: 10px 14px;
+  margin-bottom: 10px;
+}
+.demo-cat-info .hdr { display: flex; flex-wrap: wrap; align-items: baseline; gap: 8px; }
+.demo-cat-info .name { font-weight: 600; font-size: 0.96rem; color: #f5f5f8; }
+.demo-cat-info.ood    { border-color: rgba(255, 200, 100, 0.35);
+  background: linear-gradient(140deg, rgba(255, 200, 100, 0.07), rgba(255, 200, 100, 0.02)); }
+.demo-cat-info .desc { font-size: 0.84rem; color: #b7b7c1; margin-top: 4px; line-height: 1.5; }
+
+.demo-question {
+  font-size: 0.86rem; color: #cfd6ff; margin-bottom: 10px;
+  padding: 8px 12px; background: rgba(154, 166, 255, 0.10);
+  border-left: 3px solid rgba(154, 166, 255, 0.55);
+  border-radius: 4px;
+}
+.demo-question::before {
+  content: '“'; color: #9aa6ff; margin-right: 2px; font-weight: 700;
+}
+.demo-question::after  { content: '”'; color: #9aa6ff; margin-left: 2px; font-weight: 700; }
+.demo-frame-wrap {
+  position: relative; width: 100%; border-radius: 10px;
+  overflow: hidden; background: #000;
+  border: 4px solid rgba(255,255,255,0.10);
+  transition: border-color .15s ease, box-shadow .15s ease;
+}
+.demo-frame-wrap.alert {
+  border-color: #ff5252;
+  box-shadow: 0 0 0 1px rgba(255,82,82,0.5), 0 0 40px rgba(255,82,82,0.55);
+  animation: alertPulse 0.6s ease-in-out;
+}
+@keyframes alertPulse {
+  0%   { box-shadow: 0 0 0 1px rgba(255,82,82,0.5), 0 0 0px rgba(255,82,82,0.0); }
+  50%  { box-shadow: 0 0 0 1px rgba(255,82,82,0.8), 0 0 60px rgba(255,82,82,0.8); }
+  100% { box-shadow: 0 0 0 1px rgba(255,82,82,0.5), 0 0 40px rgba(255,82,82,0.55); }
+}
+.demo-frame { width: 100%; display: block; }
+.demo-status {
+  position: absolute; bottom: 10px; right: 10px;
+  font-family: ui-monospace, "SF Mono", Menlo, monospace;
+  font-size: 0.82rem; padding: 5px 12px; border-radius: 999px;
+  backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px);
+  background: rgba(0,0,0,0.55); color: #d4d4d8;
+  border: 1px solid rgba(255,255,255,0.20);
+  transition: all .2s ease;
+}
+.demo-status.alert {
+  background: rgba(255,82,82,0.85); color: #ffffff;
+  border-color: rgba(255,82,82,1.0);
+  font-weight: 700;
+  letter-spacing: 0.06em;
+}
+}
+.demo-controls {
+  display: flex; gap: 10px; align-items: center; margin-top: 8px;
+}
+.demo-controls button {
+  background: rgba(255,255,255,0.06); color: #d4d4d8;
+  border: 1px solid rgba(255,255,255,0.12); border-radius: 6px;
+  padding: 3px 10px; font-size: 0.82rem; cursor: pointer;
+  font-family: inherit; min-width: 36px;
+}
+.demo-controls button:hover { background: rgba(255,255,255,0.14); }
+.demo-meta { font-size: 0.72rem; color: #8b8b94; flex: 1; text-align: right; }
+
+/* ============ SECTIONS ============ */
+section.editing-section { padding: 5rem 2rem; position: relative; }
+section.editing-section.alt {
+  background: linear-gradient(135deg, #0f0f23 0%, #1a1a2e 50%, #16213e 100%);
+  border-top: 1px solid rgba(255,255,255,0.04);
+  border-bottom: 1px solid rgba(255,255,255,0.04);
+}
+.section-inner { max-width: 1100px; margin: 0 auto; }
+.section-eyebrow {
+  text-align: center; font-size: 0.78rem;
+  letter-spacing: 0.14em; text-transform: uppercase;
+  color: #9aa6ff; font-weight: 600; margin-bottom: 0.6rem;
+}
+.section-title {
+  font-size: clamp(1.6rem, 3.4vw, 2.2rem);
+  font-weight: 600; color: #f8f9fa;
+  text-align: center; margin-bottom: 1rem;
+  letter-spacing: -0.01em;
+}
+.section-lede {
+  font-size: 1.0rem; color: #ced4da; line-height: 1.65;
+  max-width: 800px; margin: 0 auto 2.4rem; text-align: center;
+}
+.section-lede.left { text-align: left; }
+
+
+
+
+/* ============ ALERTSCORE FORMULA ============ */
+.formula-block {
+  background: rgba(255,255,255,0.04);
+  border: 1px solid rgba(255,255,255,0.12);
+  border-radius: 14px; padding: 28px 32px;
+  max-width: 760px; margin: 0 auto; text-align: center;
+}
+.formula {
+  font-size: 1.2rem; color: #f5f5f8; padding: 18px 0;
+  font-family: ui-monospace, "SF Mono", Menlo, monospace; letter-spacing: 0.01em;
+}
+
+/* ============ LEADERBOARD ============ */
+.lb-wrap {
+  border: 1px solid rgba(255,255,255,0.12);
+  border-radius: 14px; background: rgba(255,255,255,0.03);
+  overflow-x: auto;
+}
+table.lb { width: 100%; border-collapse: collapse; font-size: 0.9rem; color: #d4d4d8; }
+table.lb th, table.lb td {
+  padding: 10px 12px; text-align: right; white-space: nowrap;
+  border-bottom: 1px solid rgba(255,255,255,0.06);
+}
+table.lb th {
+  background: rgba(255,255,255,0.05); color: #f5f5f8;
+  font-weight: 600; font-size: 0.85rem; letter-spacing: 0.02em;
+  border-bottom: 1px solid rgba(255,255,255,0.14);
+}
+table.lb th:first-child, table.lb td:first-child { text-align: left; }
+table.lb tbody tr.group-row td {
+  background: rgba(255,255,255,0.025);
+  color: #9aa6ff; font-size: 0.78rem;
+  letter-spacing: 0.04em; padding: 8px 12px;
+  text-align: left; font-weight: 500;
+  border-top: 1px solid rgba(154, 166, 255, 0.2);
+}
+table.lb tbody tr.ours {
+  background: linear-gradient(90deg, rgba(154, 166, 255, 0.08), rgba(154, 166, 255, 0.04));
+}
+table.lb tbody tr.ours td { color: #ffffff; }
+table.lb tbody tr.ours td:first-child { font-weight: 700; }
+table.lb td.best   { font-weight: 700; color: #b6f3c9; }
+table.lb td.second { text-decoration: underline; text-underline-offset: 3px; }
+.lb-note { font-size: 0.82rem; color: #adb5bd; margin-top: 12px; line-height: 1.55; }
+.lb-note code { font-size: 0.78rem; }
+
+
+
+/* ============ ACKS ============ */
+.acks-grid { display: flex; flex-wrap: wrap; gap: 8px; justify-content: center; }
+.ack-card {
+  display: inline-flex; align-items: center; gap: 6px;
+  background: rgba(255,255,255,0.04);
+  border: 1px solid rgba(255,255,255,0.10);
+  border-radius: 999px; padding: 6px 14px;
+  font-size: 0.84rem; color: #ced4da !important;
+  transition: all .2s;
+}
+.ack-card:hover {
+  background: rgba(154, 166, 255, 0.14);
+  border-color: rgba(154, 166, 255, 0.4);
+  color: #ffffff !important; text-decoration: none;
+  transform: translateY(-1px);
+}
+
+
+</style>
+</head>
+<body>
+
+<!-- ============== LANG SWITCHER ============== -->
+<div class="lang-switcher">
+  <button class="lang-btn" data-lang="en">EN</button>
+  <button class="lang-btn active" data-lang="zh">中文</button>
+</div>
+
+<!-- ============== HERO ============== -->
+<section class="hero-section">
+  <div class="hero-inner">
+    <h1 class="hero-title">DriveStreamBench</h1>
+    <p class="hero-subtitle"
+       data-zh="评估驾驶视频中的条件式监控与提醒"
+    >Evaluating User-Conditioned Watch-and-Notify in Streaming Driving Video</p>
+    <p class="authors" data-zh="匿名作者">Anonymous Author(s)</p>
+
+    <div class="hero-abstract">
+      <div class="section-eyebrow" data-zh="摘要">Abstract</div>
+      <p class="section-lede left"
+         data-zh="<strong>DriveStreamBench</strong> 是一个面向车载视觉语言模型的流式评测榜单,考察一项简单而关键的能力——边看驾驶视频边判断,仅在用户指定的条件被满足时才及时给出提醒。我们把该能力组织为四个认知层级,在统一的流式协议下进行评测,并提供有监督训练的参考基线 <strong>DriveStream-SFT</strong>。"
+      ><strong>DriveStreamBench</strong> is a streaming benchmark for in-vehicle vision-language models. It asks a simple question: while a driving video plays, can the model emit a timely alert only when a user-specified condition is met? We organise this capability into four cognitive levels under a unified streaming evaluation protocol, and provide <strong>DriveStream-SFT</strong> as a supervised reference baseline.</p>
+    </div>
+
+    <div class="demo-block">
+      <div class="demo-tabs" id="demoTabs">
+        <button data-cat="lead_vehicle_start" class="active"
+                data-zh="前车启动">Lead-vehicle starts</button>
+        <button data-cat="lead_vehicle_brake"
+                data-zh="前车刹车">Lead-vehicle brakes</button>
+        <button data-cat="traffic_light_change"
+                data-zh="信号灯变化">Traffic-light changes</button>
+        <button data-cat="adjacent_cut_in"
+                data-zh="邻道切入">Adjacent cut-in</button>
+        <button data-cat="vru_crossing"
+                data-zh="行人横穿">VRU crossing</button>
+        <button data-cat="sudden_appearance"
+                data-zh="鬼探头">Sudden appearance</button>
+      </div>
+      <div class="demo-cat-info" id="demoCatInfo">
+        <div class="demo-kicker" data-zh="定义">Definition</div>
+        <div class="hdr">
+          <span class="name" id="demoCatName"></span>
+        </div>
+        <div class="desc" id="demoCatDesc"></div>
+      </div>
+      <div class="demo-question-wrap">
+        <div class="demo-kicker" data-zh="用户指令">User prompt</div>
+        <div class="demo-question" id="demoQuestion"></div>
+      </div>
+      <div class="demo-frame-wrap" id="demoFrameWrap">
+        <img class="demo-frame" id="demoFrame" alt="streaming frame">
+        <div class="demo-status" id="demoStatus">NO REPLY · turn 1</div>
+      </div>
+      <div class="demo-controls">
+        <button id="demoPause" title="play/pause">⏸</button>
+        <button id="demoReplay" title="restart"
+                data-zh="重播">↻ replay</button>
+        <span class="demo-meta" id="demoMeta">2 fps · loops automatically</span>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ============== METRIC ============== -->
+<section class="editing-section" id="metric">
+  <div class="section-inner">
+    <div class="section-eyebrow" data-zh="核心评测指标">Primary Metric</div>
+    <h2 class="section-title">AlertScore@τ</h2>
+    <p class="section-lede left"
+       data-zh="<strong>AlertScore@τ</strong> 是两个组件的<strong>调和平均</strong>:<br>
+       &nbsp;&nbsp;• <strong>Hit@τ</strong> — 正样本中,首个非静默决策落入参考时间 <code>t<sub>ref</sub></code> 正确性窗口的比例;<br>
+       &nbsp;&nbsp;• <strong>NSR</strong>(Negative Silence Rate)— 负样本中全程保持 <code>NO REPLY</code> 的比例。"
+    ><strong>AlertScore@τ</strong> is the <strong>harmonic mean</strong> of two components:<br>
+      &nbsp;&nbsp;• <strong>Hit@τ</strong> — fraction of positive sessions whose first non-silent decision lands inside the correctness window around the annotated reference time <code>t<sub>ref</sub></code>;<br>
+      &nbsp;&nbsp;• <strong>NSR</strong> (Negative Silence Rate) — fraction of negative sessions that stay in <code>NO REPLY</code> throughout.</p>
+    <div class="formula-block">
+      <div class="formula">
+        AlertScore@τ &nbsp;=&nbsp; 2 · Hit@τ · NSR / (Hit@τ + NSR)
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ============== LEADERBOARD ============== -->
+<section class="editing-section alt" id="leaderboard">
+  <div class="section-inner">
+    <div class="section-eyebrow" data-zh="主榜单">Main Leaderboard</div>
+    <h2 class="section-title">L4-Core CoreMacro@2s</h2>
+    <div class="lb-wrap">
+      <table class="lb">
+        <thead>
+          <tr>
+            <th data-zh="模型">Model</th><th>fps</th>
+            <th>S1</th><th>S2</th><th>S3</th><th>S4</th><th>S5</th>
+            <th>Hit@2</th><th>NSR</th><th>Core Macro</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr class="group-row"><td colspan="10"
+              data-zh="开源 VLM"
+          >Open-source VLMs</td></tr>
+          <tr><td>Qwen3-VL-2B</td>  <td>2</td><td>0.0</td>  <td>0.0</td>  <td>3.8</td>  <td>0.0</td>  <td>21.8</td><td>2.8</td>  <td class="second">98.7</td><td>5.1</td></tr>
+          <tr><td>Qwen3-VL-4B</td>  <td>2</td><td>10.7</td> <td>0.0</td>  <td>38.3</td> <td>2.4</td>  <td>61.7</td><td>20.1</td> <td>63.6</td><td>22.6</td></tr>
+          <tr><td>Qwen3-VL-8B</td>  <td>2</td><td>23.0</td> <td>17.2</td> <td>52.2</td> <td>4.8</td>  <td>54.3</td><td>29.4</td> <td>47.9</td><td>30.3</td></tr>
+          <tr><td>Qwen3-VL-32B</td> <td>2</td><td>36.0</td> <td>20.1</td> <td>77.6</td> <td>8.9</td>  <td>65.9</td><td>36.3</td> <td>63.1</td><td>41.7</td></tr>
+
+          <tr class="group-row"><td colspan="10"
+              data-zh="通用流式 transfer baseline"
+          >General streaming transfer baselines</td></tr>
+          <tr><td>StreamForest</td>    <td>1</td><td>0.0</td><td>0.0</td><td>0.0</td><td>0.0</td><td>0.0</td><td>0.0</td><td class="best">100.0</td><td>0.0</td></tr>
+          <tr><td>SimpleStream</td>    <td>1</td><td>9.3</td><td>0.0</td><td>55.7</td><td>0.0</td><td>24.6</td><td>11.8</td><td>92.4</td><td>17.9</td></tr>
+          <tr><td>Dispider</td>        <td>1</td><td>1.8</td><td>2.0</td><td>9.8</td><td>15.2</td><td>20.7</td><td>5.8</td><td>37.9</td><td>9.9</td></tr>
+          <tr><td>VideoLLM-online</td> <td>2</td><td>0.0</td><td>0.0</td><td>0.0</td><td>0.0</td><td>0.0</td><td>5.3</td><td>0.0</td><td>0.0</td></tr>
+
+          <tr class="group-row"><td colspan="10"
+              data-zh="主动式训练的流式 transfer baseline"
+          >Proactive-trained streaming transfer baselines</td></tr>
+          <tr><td>MMDuet2</td>         <td>1</td><td>0.0</td><td>0.0</td><td>26.9</td><td>0.0</td><td>26.2</td><td>6.2</td><td>97.2</td><td>10.6</td></tr>
+          <tr><td>M4</td>              <td>1</td><td>13.6</td><td>0.0</td><td>1.9</td><td>9.3</td><td>4.0</td><td>3.2</td><td>69.9</td><td>5.8</td></tr>
+
+          <tr class="group-row"><td colspan="10"
+              data-zh="在 DriveStreamBench 上训练的 reference baseline"
+          >Reference baselines trained on DriveStreamBench</td></tr>
+          <tr class="ours"><td>DriveStream-SFT-L4</td> <td>2</td><td class="best">91.7</td><td>50.5</td><td>86.7</td><td>0.0</td><td>81.6</td><td>53.3</td><td>98.6</td><td>62.1</td></tr>
+          <tr class="ours"><td>DriveStream-SFT</td>   <td>2</td><td>91.4</td><td class="second">67.4</td><td class="second">88.6</td><td class="second">31.0</td><td class="second">83.2</td><td class="second">62.0</td><td>96.5</td><td class="second">72.3</td></tr>
+          <tr class="human"><td data-zh="Human">Human</td>       <td>10</td><td class="second">91.6</td><td class="best">89.7</td><td class="best">98.0</td><td class="best">96.0</td><td class="best">88.9</td><td class="best">90.0</td><td>96.3</td><td class="best">92.8</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <div class="lb-note"
+         data-zh="每列里 <strong>加粗</strong> = 最佳,<span style='text-decoration:underline;text-underline-offset:3px'>下划线</span> = 次佳。<br><strong>S1</strong>=前车启动 · <strong>S2</strong>=前车刹车 · <strong>S3</strong>=信号灯变化 · <strong>S4</strong>=邻道切入(低资源长尾)· <strong>S5</strong>=行人横穿。S6(鬼探头,OOD 压力测试)在 Appendix H.20 单独报告。即使采用宽松的 action-level adapter,最强的 transfer baseline 也只达 <strong>17.9%</strong> Core Macro,而 <strong>DriveStream-SFT 为 72.3%</strong>。"
+    >In each column, <strong>bold</strong> marks the best result and
+      <span style="text-decoration:underline;text-underline-offset:3px">underline</span> marks the second-best.<br>
+      <strong>S1</strong>=lead_vehicle_start · <strong>S2</strong>=lead_vehicle_brake ·
+      <strong>S3</strong>=traffic_light_change · <strong>S4</strong>=adjacent_cut_in (low-resource long-tail) ·
+      <strong>S5</strong>=vru_crossing. S6 (OOD stress test) is reported separately in Appendix H.20.
+      Even under permissive action-level adapters, the strongest transfer baseline reaches only
+      <strong>17.9%</strong> Core Macro vs <strong>DriveStream-SFT at 72.3%</strong>.</div>
+  </div>
+</section>
+
+<!-- ============== ACKNOWLEDGEMENTS ============== -->
+<section class="editing-section alt" id="acks">
+  <div class="section-inner">
+    <div class="section-eyebrow" data-zh="致谢">Acknowledgements</div>
+    <h2 class="section-title"
+        data-zh="致谢 115 位 bilibili UP 主"
+    >115 bilibili creators — thank you.</h2>
+    <p class="section-lede"
+       data-zh="“鬼探头”类引用了 <strong>115 位 bilibili 创作者</strong>公开分享的 120 段行车记录视频。我们<strong>不重新分发视频本身</strong>,发布内容仅包含:源视频链接、关键帧标注和对应的用户提示词、以及隐私 mask 标注。用户从原平台获取视频后,可在本地完成脱敏,仅用于学术非商业研究。衷心感谢以下创作者。排序不分先后,点击可访问主页。"
+    >The sudden-appearance category references 120 dashcam clips publicly shared on bilibili
+      by <strong>115 creators</strong>. We do <strong>not</strong> redistribute the videos
+      themselves — the release contains only source links, reference timestamps, watch instructions,
+      and privacy-mask metadata (face / plate / watermark / inserted-caption bboxes). Users fetch
+      the videos from the original sources and apply local masking, for academic non-commercial
+      research only. We are grateful to the following creators. Listed in arbitrary order; click any
+      name to open the creator's homepage.</p>
+
+<div class="acks-grid">
+  <a class="ack-card" href="https://space.bilibili.com/641281334" target="_blank" rel="noopener">qwad112</a>
+  <a class="ack-card" href="https://space.bilibili.com/584361934" target="_blank" rel="noopener">RC撸车侠</a>
+  <a class="ack-card" href="https://space.bilibili.com/442960338" target="_blank" rel="noopener">ufo世界未解之谜</a>
+  <a class="ack-card" href="https://space.bilibili.com/1977277356" target="_blank" rel="noopener">VIOFO行车记录仪</a>
+  <a class="ack-card" href="https://space.bilibili.com/118390556" target="_blank" rel="noopener">wsxmbb</a>
+  <a class="ack-card" href="https://space.bilibili.com/396379196" target="_blank" rel="noopener">y叶100</a>
+  <a class="ack-card" href="https://space.bilibili.com/24094325" target="_blank" rel="noopener">万能的海螺</a>
+  <a class="ack-card" href="https://space.bilibili.com/1874574301" target="_blank" rel="noopener">三二一一一二</a>
+  <a class="ack-card" href="https://space.bilibili.com/475082" target="_blank" rel="noopener">不懂丶你的黑色幽默</a>
+  <a class="ack-card" href="https://space.bilibili.com/14618597" target="_blank" rel="noopener">不烂仔的烂仔黄</a>
+  <a class="ack-card" href="https://space.bilibili.com/171308983" target="_blank" rel="noopener">不说应该</a>
+  <a class="ack-card" href="https://space.bilibili.com/3690971829111374" target="_blank" rel="noopener">交通看点</a>
+  <a class="ack-card" href="https://space.bilibili.com/333368990" target="_blank" rel="noopener">仿佛还有温度</a>
+  <a class="ack-card" href="https://space.bilibili.com/3494362117834975" target="_blank" rel="noopener">余什么杰</a>
+  <a class="ack-card" href="https://space.bilibili.com/382928214" target="_blank" rel="noopener">别浪驾道</a>
+  <a class="ack-card" href="https://space.bilibili.com/67358257" target="_blank" rel="noopener">卖姑娘的大火柴233</a>
+  <a class="ack-card" href="https://space.bilibili.com/475455608" target="_blank" rel="noopener">南山大叔叔叔叔</a>
+  <a class="ack-card" href="https://space.bilibili.com/15438260" target="_blank" rel="noopener">只玩小美不给就送</a>
+  <a class="ack-card" href="https://space.bilibili.com/417259414" target="_blank" rel="noopener">各路神仙小土豆</a>
+  <a class="ack-card" href="https://space.bilibili.com/480802594" target="_blank" rel="noopener">喝欧凯零零七</a>
+  <a class="ack-card" href="https://space.bilibili.com/232582704" target="_blank" rel="noopener">地狱StewieGriffin</a>
+  <a class="ack-card" href="https://space.bilibili.com/392888381" target="_blank" rel="noopener">夕阳如薛</a>
+  <a class="ack-card" href="https://space.bilibili.com/15786367" target="_blank" rel="noopener">大大大大大大宁宁</a>
+  <a class="ack-card" href="https://space.bilibili.com/3837601" target="_blank" rel="noopener">大龄小将</a>
+  <a class="ack-card" href="https://space.bilibili.com/927541" target="_blank" rel="noopener">天然气さん</a>
+  <a class="ack-card" href="https://space.bilibili.com/506261168" target="_blank" rel="noopener">天神之眼大冰块</a>
+  <a class="ack-card" href="https://space.bilibili.com/393787915" target="_blank" rel="noopener">奇奇怪怪的黄老师</a>
+  <a class="ack-card" href="https://space.bilibili.com/330757513" target="_blank" rel="noopener">孤云寒飘</a>
+  <a class="ack-card" href="https://space.bilibili.com/1388970095" target="_blank" rel="noopener">安全交通警示录</a>
+  <a class="ack-card" href="https://space.bilibili.com/142385164" target="_blank" rel="noopener">宋太祖_赵匡胤</a>
+  <a class="ack-card" href="https://space.bilibili.com/3546926400145550" target="_blank" rel="noopener">小李爱开车</a>
+  <a class="ack-card" href="https://space.bilibili.com/280996082" target="_blank" rel="noopener">小沫沫和大斌斌</a>
+  <a class="ack-card" href="https://space.bilibili.com/195088239" target="_blank" rel="noopener">小牛电动汽车</a>
+  <a class="ack-card" href="https://space.bilibili.com/364301221" target="_blank" rel="noopener">小雅-硕士-没交社保</a>
+  <a class="ack-card" href="https://space.bilibili.com/1573852503" target="_blank" rel="noopener">少时理想</a>
+  <a class="ack-card" href="https://space.bilibili.com/438168067" target="_blank" rel="noopener">布朗bili</a>
+  <a class="ack-card" href="https://space.bilibili.com/259543236" target="_blank" rel="noopener">广式粉肠</a>
+  <a class="ack-card" href="https://space.bilibili.com/457397406" target="_blank" rel="noopener">开心小摩托</a>
+  <a class="ack-card" href="https://space.bilibili.com/515163842" target="_blank" rel="noopener">总有治愈偶听弦音</a>
+  <a class="ack-card" href="https://space.bilibili.com/400849" target="_blank" rel="noopener">懒死骆驼AC</a>
+  <a class="ack-card" href="https://space.bilibili.com/515404508" target="_blank" rel="noopener">懒猫不合适</a>
+  <a class="ack-card" href="https://space.bilibili.com/436314196" target="_blank" rel="noopener">我哪知道叫啥了</a>
+  <a class="ack-card" href="https://space.bilibili.com/515185115" target="_blank" rel="noopener">我是Xi牙</a>
+  <a class="ack-card" href="https://space.bilibili.com/20706803" target="_blank" rel="noopener">我是公蛋黄</a>
+  <a class="ack-card" href="https://space.bilibili.com/480772399" target="_blank" rel="noopener">我的专用呢称</a>
+  <a class="ack-card" href="https://space.bilibili.com/6873412" target="_blank" rel="noopener">捂脸黄豆</a>
+  <a class="ack-card" href="https://space.bilibili.com/30816462" target="_blank" rel="noopener">搜狗不找狗</a>
+  <a class="ack-card" href="https://space.bilibili.com/3546606370556728" target="_blank" rel="noopener">摸小小小小鱼</a>
+  <a class="ack-card" href="https://space.bilibili.com/415801454" target="_blank" rel="noopener">攀蟾折桂啦啦啦</a>
+  <a class="ack-card" href="https://space.bilibili.com/403950110" target="_blank" rel="noopener">改名字了----</a>
+  <a class="ack-card" href="https://space.bilibili.com/630454811" target="_blank" rel="noopener">星星眼实记</a>
+  <a class="ack-card" href="https://space.bilibili.com/300881823" target="_blank" rel="noopener">晓陆123</a>
+  <a class="ack-card" href="https://space.bilibili.com/3546627033794964" target="_blank" rel="noopener">智驾大师傅</a>
+  <a class="ack-card" href="https://space.bilibili.com/214601258" target="_blank" rel="noopener">来个名字都那么烦</a>
+  <a class="ack-card" href="https://space.bilibili.com/1903082386" target="_blank" rel="noopener">杨哥看世界</a>
+  <a class="ack-card" href="https://space.bilibili.com/26755571" target="_blank" rel="noopener">杰日梅石</a>
+  <a class="ack-card" href="https://space.bilibili.com/203372" target="_blank" rel="noopener">樱、空释</a>
+  <a class="ack-card" href="https://space.bilibili.com/435172641" target="_blank" rel="noopener">每天稳定零个币</a>
+  <a class="ack-card" href="https://space.bilibili.com/43129417" target="_blank" rel="noopener">江南好呻音</a>
+  <a class="ack-card" href="https://space.bilibili.com/226334348" target="_blank" rel="noopener">泰大婶的香蕉</a>
+  <a class="ack-card" href="https://space.bilibili.com/362222762" target="_blank" rel="noopener">流星看地球</a>
+  <a class="ack-card" href="https://space.bilibili.com/6850770" target="_blank" rel="noopener">浙B森林</a>
+  <a class="ack-card" href="https://space.bilibili.com/30987332" target="_blank" rel="noopener">爱西蒙尼</a>
+  <a class="ack-card" href="https://space.bilibili.com/266207760" target="_blank" rel="noopener">猪头鹏123</a>
+  <a class="ack-card" href="https://space.bilibili.com/20528810" target="_blank" rel="noopener">疯狂的食尸鬼</a>
+  <a class="ack-card" href="https://space.bilibili.com/32134940" target="_blank" rel="noopener">白菜他爸</a>
+  <a class="ack-card" href="https://space.bilibili.com/19262991" target="_blank" rel="noopener">真の花和尚撸自身</a>
+  <a class="ack-card" href="https://space.bilibili.com/128798217" target="_blank" rel="noopener">知乐332</a>
+  <a class="ack-card" href="https://space.bilibili.com/201381140" target="_blank" rel="noopener">神剑应急-拜合提亚尔</a>
+  <a class="ack-card" href="https://space.bilibili.com/301930513" target="_blank" rel="noopener">神風_Kamikaze</a>
+  <a class="ack-card" href="https://space.bilibili.com/31137192" target="_blank" rel="noopener">穷人の眼泪</a>
+  <a class="ack-card" href="https://space.bilibili.com/6116440" target="_blank" rel="noopener">笑喷乐的狗头</a>
+  <a class="ack-card" href="https://space.bilibili.com/18840210" target="_blank" rel="noopener">紫曜羽</a>
+  <a class="ack-card" href="https://space.bilibili.com/1749224369" target="_blank" rel="noopener">老司机观察</a>
+  <a class="ack-card" href="https://space.bilibili.com/286128475" target="_blank" rel="noopener">耶路撒冷的枣糕王</a>
+  <a class="ack-card" href="https://space.bilibili.com/3888050" target="_blank" rel="noopener">膝盖中箭囧坦克</a>
+  <a class="ack-card" href="https://space.bilibili.com/67771333" target="_blank" rel="noopener">萨萨不是傻傻的</a>
+  <a class="ack-card" href="https://space.bilibili.com/1985736588" target="_blank" rel="noopener">记录仪那些事</a>
+  <a class="ack-card" href="https://space.bilibili.com/24655917" target="_blank" rel="noopener">诸葛神康</a>
+  <a class="ack-card" href="https://space.bilibili.com/15391808" target="_blank" rel="noopener">连头像都很牛</a>
+  <a class="ack-card" href="https://space.bilibili.com/95665154" target="_blank" rel="noopener">野比大雄伴我同行</a>
+  <a class="ack-card" href="https://space.bilibili.com/3546632572373520" target="_blank" rel="noopener">闲者-生</a>
+  <a class="ack-card" href="https://space.bilibili.com/636204751" target="_blank" rel="noopener">阿珏阿珏</a>
+  <a class="ack-card" href="https://space.bilibili.com/97268211" target="_blank" rel="noopener">震腾腾-</a>
+  <a class="ack-card" href="https://space.bilibili.com/1308312" target="_blank" rel="noopener">鱼熟了</a>
+</div>
+
+  </div>
+</section>
+
+<!-- ============== FOOTER ============== -->
+
+<script>
+// ----- hero demo (tab-driven streaming animation) -----
+const DEMO_QUESTION_ZH = {
+  lead_vehicle_start:  '前车启动时请提醒我。',
+  lead_vehicle_brake:  '前车开始刹车时请告诉我。',
+  traffic_light_change:'信号灯变化时请提醒我。',
+  adjacent_cut_in:     '邻道车切入本车道时请告诉我。',
+  vru_crossing:        '行人横穿时请提醒我。',
+  sudden_appearance:   '出现鬼探头时请提醒我。',
+};
+const CAT_INFO_EN = {
+  lead_vehicle_start:   { name: 'Lead-vehicle start',   mode: 'target-timing',
+    desc: 'Alert when the lead vehicle in the ego lane starts moving from a stopped state.', cls: '' },
+  lead_vehicle_brake:   { name: 'Lead-vehicle brake',   mode: 'event-triggered',
+    desc: 'Alert when the lead vehicle brakes and its brake lights turn on.', cls: '' },
+  traffic_light_change: { name: 'Traffic-light change', mode: 'event-triggered',
+    desc: 'Alert when the driving-relevant traffic signal state changes.', cls: '' },
+  adjacent_cut_in:      { name: 'Adjacent cut-in',      mode: 'low-resource · target-timing',
+    desc: 'Alert when a vehicle in an adjacent lane merges into the ego lane. Long-tail in nuPlan.', cls: 'lowres' },
+  vru_crossing:         { name: 'VRU crossing',         mode: 'target-timing',
+    desc: 'Alert when a pedestrian or cyclist enters or starts crossing the road ahead.', cls: '' },
+  sudden_appearance:    { name: 'Sudden appearance',    mode: 'held-out · OOD stress test',
+    desc: 'Alert when a target suddenly appears from an occluded area. Held out from training, external dashcam video source.', cls: 'ood' },
+};
+const CAT_INFO_ZH = {
+  lead_vehicle_start:   { name: '前车启动',  mode: '预判式',          desc: '本车道前车从停驶状态启动时提醒。' },
+  lead_vehicle_brake:   { name: '前车刹车',  mode: '触发式',          desc: '前车刹车且刹车灯亮起时提醒。' },
+  traffic_light_change: { name: '信号灯变化', mode: '触发式',          desc: '驾驶相关的信号灯状态切换时提醒。' },
+  adjacent_cut_in:      { name: '邻道切入',  mode: '低资源 · 预判式', desc: '邻道车辆切入本车道时提醒。nuPlan 中长尾稀缺。' },
+  vru_crossing:         { name: '行人横穿',  mode: '预判式',          desc: '行人或自行车进入或开始穿越前方道路时提醒。' },
+  sudden_appearance:    { name: '鬼探头',    mode: '留作 held-out · OOD 压力测试',
+    desc: '行人或车辆从遮挡区域突然出现时提醒。事件不参与训练,源视频来自外部行车记录。' },
+};
+let DEMO_MAN = null;       // manifest
+let demoCat = 'lead_vehicle_start';
+let demoFrame = 0;
+let demoTimer = null;
+let demoPendingTimeout = null;
+let demoPaused = false;
+const FPS_MS = 500;        // 2 fps display
+const PAUSE_AFTER_END_MS = 1500;
+
+function clearDemoTimers() {
+  if (demoTimer) { clearInterval(demoTimer); demoTimer = null; }
+  if (demoPendingTimeout) { clearTimeout(demoPendingTimeout); demoPendingTimeout = null; }
+}
+
+function $(id) { return document.getElementById(id); }
+
+function applyDemoCatLang(cat) {
+  const lang = document.documentElement.lang === 'zh-CN' ? 'zh' : 'en';
+  const ci  = (lang === 'zh' ? CAT_INFO_ZH : CAT_INFO_EN)[cat] || {};
+  const cls = (CAT_INFO_EN[cat] || {}).cls || '';
+  $('demoCatName').textContent = ci.name || '';
+  $('demoCatDesc').textContent = ci.desc || '';
+  $('demoCatInfo').className = 'demo-cat-info' + (cls ? ' ' + cls : '');
+  $('demoQuestion').textContent =
+    (lang === 'zh') ? DEMO_QUESTION_ZH[cat] : DEMO_MAN[cat].question;
+}
+
+function setDemoCat(cat) {
+  if (!DEMO_MAN || !(cat in DEMO_MAN)) return;
+  demoCat = cat; demoFrame = 0;
+  document.querySelectorAll('#demoTabs button').forEach(b =>
+    b.classList.toggle('active', b.dataset.cat === cat));
+  applyDemoCatLang(cat);
+  // preload all frames
+  const m = DEMO_MAN[cat];
+  m.frames.forEach(f => { const i = new Image(); i.src = 'demo/' + f; });
+  drawDemoFrame();
+  if (demoPaused) { /* don't auto-resume */ }
+}
+
+function drawDemoFrame() {
+  const m = DEMO_MAN[demoCat];
+  if (!m) return;
+  const idx = Math.min(demoFrame, m.frames.length - 1);
+  $('demoFrame').src = 'demo/' + m.frames[idx];
+  const isAlert = idx >= m.alert_turn_idx;
+  $('demoFrameWrap').classList.toggle('alert', isAlert);
+  $('demoStatus').classList.toggle('alert', isAlert);
+  $('demoStatus').textContent =
+    (isAlert ? 'ALERT' : 'NO REPLY') + ' · turn ' + (idx + 1) + '/' + m.frames.length;
+}
+
+function demoTick() {
+  if (demoPaused || !DEMO_MAN) return;
+  const m = DEMO_MAN[demoCat];
+  if (!m) return;
+  demoFrame++;
+  if (demoFrame >= m.frames.length) {
+    // hold final ALERT frame for PAUSE_AFTER_END_MS, then restart
+    drawDemoFrame();
+    clearDemoTimers();
+    demoPendingTimeout = setTimeout(() => {
+      demoPendingTimeout = null;
+      if (demoPaused) return;
+      demoFrame = 0; drawDemoFrame();
+      demoTimer = setInterval(demoTick, FPS_MS);
+    }, PAUSE_AFTER_END_MS);
+    return;
+  }
+  drawDemoFrame();
+}
+
+function startDemoLoop() {
+  clearDemoTimers();
+  if (!demoPaused) demoTimer = setInterval(demoTick, FPS_MS);
+}
+
+document.getElementById('demoTabs').addEventListener('click', e => {
+  if (e.target.tagName === 'BUTTON' && e.target.dataset.cat) {
+    setDemoCat(e.target.dataset.cat); startDemoLoop();
+  }
+});
+document.getElementById('demoPause').addEventListener('click', () => {
+  demoPaused = !demoPaused;
+  document.getElementById('demoPause').textContent = demoPaused ? '▶' : '⏸';
+  if (!demoPaused) startDemoLoop();
+});
+document.getElementById('demoReplay').addEventListener('click', () => {
+  demoFrame = 0; drawDemoFrame();
+  if (!demoTimer && !demoPaused) startDemoLoop();
+});
+
+fetch('demo/manifest.json').then(r => r.json()).then(m => {
+  DEMO_MAN = m;
+  setDemoCat(demoCat);
+  startDemoLoop();
+}).catch(err => {
+  console.error('demo manifest load failed:', err);
+  document.getElementById('demoQuestion').textContent =
+    '(demo unavailable — manifest.json failed to load)';
+});
+
+// ----- lang switcher -----
+function setLang(lang) {
+  document.documentElement.lang = (lang === 'zh') ? 'zh-CN' : 'en';
+  document.querySelectorAll('[data-zh]').forEach(el => {
+    // cache the original EN version on first switch so we can restore
+    if (!('en' in el.dataset)) el.dataset.en = el.innerHTML;
+    el.innerHTML = (lang === 'zh') ? el.dataset.zh : el.dataset.en;
+  });
+  document.querySelectorAll('.lang-btn').forEach(b => {
+    b.classList.toggle('active', b.dataset.lang === lang);
+  });
+  try { localStorage.setItem('dsb_lang', lang); } catch(e){}
+}
+document.querySelectorAll('.lang-btn').forEach(b => {
+  b.addEventListener('click', () => setLang(b.dataset.lang));
+});
+// honour saved choice + ?lang=zh deep-link
+const params = new URLSearchParams(location.search);
+const saved = params.get('lang') || (() => { try { return localStorage.getItem('dsb_lang'); } catch(e){ return null; } })();
+setLang(saved === 'en' ? 'en' : 'zh');
+
+// ----- on lang flip, also refresh the hero demo cat-info -----
+const _origSetLang = setLang;
+window.setLang = function(lang) {
+  _origSetLang(lang);
+  if (DEMO_MAN && DEMO_MAN[demoCat]) applyDemoCatLang(demoCat);
+};
+document.querySelectorAll('.lang-btn').forEach(b => {
+  b.addEventListener('click', () => window.setLang(b.dataset.lang));
+});
+</script>
+
+</body>
+</html>
